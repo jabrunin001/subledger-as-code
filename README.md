@@ -53,6 +53,64 @@ Both internal-consistency controls stay green; the source-to-ledger reconciliati
 goes red (FAIL 2, naming the offending accounts). The CI `control-proof` job asserts
 exactly this.
 
+## From detection to triage
+
+v1 *caught* the break; v2 *explains* it. Triage clusters the reconciliation variances,
+classifies the root cause, points at the implicated posting rule, and writes a plain-English
+explanation — deterministically, no LLM required:
+
+```bash
+# after a broken build (see "control in action" above):
+subledger-audit triage --backend heuristic
+```
+
+Output (deterministic):
+
+```
+# Variance Triage
+
+_Backend requested: heuristic_
+
+## cash+interest_income — wrong_account (high confidence)
+
+- Accounts: cash, interest_income
+- Net variance: +0.00
+- Backend: heuristic
+- Candidate rules: origination/2 credit cash (principal); payment/1 debit cash (total); payment/3 credit interest_income (interest)
+
+Accounts cash and interest_income diverge from their source-derived expectations by offsetting
+amounts (net +0.00 ≈ 0: cash +4394.83, interest_income -4394.83), indicating value was
+reallocated between them rather than created or lost — most consistent with a posting leg
+targeting the wrong account. Both accounts are posted by the 'payment' entry; the leg
+crediting 'interest_income' (rule payment/3, amount_source 'interest') is the leading
+suspect for misrouting.
+
+**Next step:** Inspect the candidate posting rules for a leg posting to the wrong account;
+correct it and re-run reconciliation. The trial-balance control will stay green (this is a
+balanced reallocation) — only the substantive source-to-ledger reconciliation catches it.
+```
+
+`pack` embeds this deterministic triage (`triage.json` + `triage.md`) into the checksummed evidence
+pack, so the auditor evidence now triages each exception, not just records it. The `control-proof` CI
+job asserts this classification.
+
+### Optional: richer explanations with a local LLM
+
+```bash
+ollama pull llama3.1:8b
+subledger-audit triage --backend ollama
+```
+
+With Ollama running, the `--backend ollama` path produces a richer natural-language explanation for the
+same finding. **Local, private inference:** the prompt — financial variances and posting rules — never
+leaves the machine. Classification stays deterministic (the local model enriches the prose but cannot
+change the root cause), and if Ollama isn't available the command silently falls back to the heuristic.
+
+> _Recorded example (local llama3.1; your wording will vary):_
+> "The payment entry's interest component appears to be crediting Cash instead of Interest Income:
+> Cash holds an extra $4,394.83 while Interest Income is short by the same amount. Inspect the
+> `payment`/`interest` leg in `posting_rules`."
+
 ## Capability map
 
 | Requirement | Where it lives |
@@ -66,6 +124,7 @@ exactly this.
 | SOX controls / audit evidence | `tests/assert_*.sql`, `audit_cli/` evidence packs |
 | Snowflake (RBAC, masking, clustering) | `snowflake/`, `profiles.yml` snowflake target |
 | Semantic layer | `models/semantic/` (MetricFlow) |
+| AI/LLM for data quality | `audit_cli/triage/` (deterministic heuristic + optional local Ollama) |
 
 ## Running on Snowflake
 
@@ -77,6 +136,4 @@ period+account reconciliation queries; size the warehouse to XS for this data vo
 
 ## Roadmap
 
-- **Spec 2 — AI-assisted variance triage:** an LLM explains each reconciliation break the
-  control catches, turning the evidence pack into a triage assistant.
 - **Spec 3 (optional) — Snowflake deep-dive:** live trial account with query-profile teardown.
