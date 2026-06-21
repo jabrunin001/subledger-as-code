@@ -48,7 +48,8 @@ def _attestation(summary: EvidenceSummary, dbt_version: str, git_sha: str) -> st
     )
 
 def build_pack(out_dir: str, results: list[TestResult], lineage: list[LineageNode],
-               reconciliation_md: str, dbt_version: str, git_sha: str) -> str:
+               reconciliation_md: str, dbt_version: str, git_sha: str,
+               triage_md: str | None = None, triage_json: str | None = None) -> str:
     summary = EvidenceSummary(
         total=len(results),
         passed=sum(1 for r in results if r.unique_id.startswith("test.") and r.status == "pass"),
@@ -66,6 +67,12 @@ def build_pack(out_dir: str, results: list[TestResult], lineage: list[LineageNod
         f.write(reconciliation_md)
     with open(os.path.join(pack_dir, "control_attestation.md"), "w") as f:
         f.write(_attestation(summary, dbt_version, git_sha))
+    if triage_md is not None:
+        with open(os.path.join(pack_dir, "triage.md"), "w") as f:
+            f.write(triage_md)
+    if triage_json is not None:
+        with open(os.path.join(pack_dir, "triage.json"), "w") as f:
+            f.write(triage_json)
 
     write_manifest(pack_dir)
     return pack_dir

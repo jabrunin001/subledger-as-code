@@ -58,17 +58,24 @@ def run(inject_break: bool = typer.Option(False, "--inject-break")):
 
 @app.command()
 def pack(out_dir: str = typer.Option("evidence", "--out")):
-    """Assemble a checksummed evidence pack from the latest dbt run."""
+    """Assemble a checksummed evidence pack (now including deterministic variance triage)."""
     results = dbt_artifacts.parse_run_results(os.path.join(TARGET_DIR, "run_results.json"))
     lineage = dbt_artifacts.parse_lineage(os.path.join(TARGET_DIR, "manifest.json"))
     duckdb_path = os.environ.get("DBT_DUCKDB_PATH", "subledger.duckdb")
     recon_md = reconciliation.render_statement(_query_variances(duckdb_path))
     run_results_path = os.path.join(TARGET_DIR, "run_results.json")
+
+    context = load_context(duckdb_path, run_label=_git_sha())
+    report = run_triage(context, backend="heuristic")
+    triage_md = render_triage_md(report)
+    triage_json = json.dumps(report.model_dump(), indent=2)
+
     pack_dir = pack_mod.build_pack(
         out_dir=out_dir, results=results, lineage=lineage,
         reconciliation_md=recon_md,
         dbt_version=_dbt_version_from_run_results(run_results_path),
         git_sha=_git_sha(),
+        triage_md=triage_md, triage_json=triage_json,
     )
     typer.echo(f"Evidence pack written to {pack_dir}")
 
