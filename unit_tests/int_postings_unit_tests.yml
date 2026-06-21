@@ -64,3 +64,22 @@ unit_tests:
         - {journal_entry_id: 'PAY-L0001-01', account_id: 'cash', dr_amount: 92.50, cr_amount: 0.00}
         - {journal_entry_id: 'PAY-L0001-01', account_id: 'loans_receivable', dr_amount: 0.00, cr_amount: 80.00}
         - {journal_entry_id: 'PAY-L0001-01', account_id: 'cash', dr_amount: 0.00, cr_amount: 12.50}
+
+  - name: charge_off_posts_dr_expense_cr_loans_receivable
+    model: int_postings
+    given:
+      - input: ref('stg_originations')
+        rows: []
+      - input: ref('stg_payments')
+        rows: []
+      - input: ref('stg_charge_offs')
+        rows:
+          - {event_id: 'CO-L0001', event_type: 'charge_off', loan_id: 'L0001', event_date: '2026-06-01', principal_amount: 250.00, interest_amount: 0.00, total_amount: 250.00}
+      - input: ref('posting_rules')
+        rows:
+          - {event_type: 'charge_off', leg: 1, account_id: 'charge_off_expense', dr_cr: 'debit', amount_source: 'total'}
+          - {event_type: 'charge_off', leg: 2, account_id: 'loans_receivable', dr_cr: 'credit', amount_source: 'total'}
+    expect:
+      rows:
+        - {journal_entry_id: 'CO-L0001', account_id: 'charge_off_expense', dr_amount: 250.00, cr_amount: 0.00}
+        - {journal_entry_id: 'CO-L0001', account_id: 'loans_receivable', dr_amount: 0.00, cr_amount: 250.00}
