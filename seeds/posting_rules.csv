@@ -1,0 +1,8 @@
+event_type,leg,account_id,dr_cr,amount_source
+origination,1,loans_receivable,debit,principal
+origination,2,cash,credit,principal
+payment,1,cash,debit,total
+payment,2,loans_receivable,credit,principal
+payment,3,interest_income,credit,interest
+charge_off,1,charge_off_expense,debit,total
+charge_off,2,loans_receivable,credit,total

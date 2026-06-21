@@ -1,0 +1,5 @@
+account_id,account_name,account_type,normal_balance
+loans_receivable,Loans Receivable,asset,debit
+cash,Cash,asset,debit
+interest_income,Interest Income,revenue,credit
+charge_off_expense,Charge-off Expense,expense,debit
