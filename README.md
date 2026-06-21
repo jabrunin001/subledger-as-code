@@ -60,7 +60,8 @@ classifies the root cause, points at the implicated posting rule, and writes a p
 explanation — deterministically, no LLM required:
 
 ```bash
-# after a broken build (see "control in action" above):
+# inject the break so the reconciliation variance exists (see "control in action" for why --exclude):
+dbt build --profiles-dir . --vars 'inject_break: true' --exclude resource_type:unit_test
 subledger-audit triage --backend heuristic
 ```
 
