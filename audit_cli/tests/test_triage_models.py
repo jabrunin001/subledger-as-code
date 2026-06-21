@@ -6,6 +6,9 @@ from audit_cli.triage.models import (
 def test_enums_have_expected_values():
     assert RootCause.WRONG_ACCOUNT.value == "wrong_account"
     assert RootCause.VALUE_IMBALANCE.value == "value_imbalance"
+    assert {r.value for r in RootCause} == {
+        "wrong_account", "value_imbalance", "timing", "source_data", "unknown"
+    }
     assert {c.value for c in Confidence} == {"high", "medium", "low"}
 
 def test_finding_roundtrips_and_defaults_backend_heuristic():
@@ -26,4 +29,4 @@ def test_finding_roundtrips_and_defaults_backend_heuristic():
 
 def test_context_defaults_are_empty():
     ctx = TriageContext()
-    assert ctx.variances == [] and ctx.posting_rules == [] and ctx.accounts == []
+    assert ctx.variances == [] and ctx.posting_rules == [] and ctx.accounts == [] and ctx.journal_summary == []
