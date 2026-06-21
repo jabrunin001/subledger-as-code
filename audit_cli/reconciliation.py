@@ -6,7 +6,7 @@ def render_statement(rows: list[dict]) -> str:
         "| --- | ---: | ---: | ---: |",
     ]
     if not rows:
-        lines.append("| _(no variances — all accounts reconcile)_ |  |  |  |")
+        lines.append("| _(no variances; all accounts reconcile)_ |  |  |  |")
     for r in rows:
         lines.append(
             f"| {r['account_id']} | {float(r['expected_ending']):.2f} | "

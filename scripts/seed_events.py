@@ -25,7 +25,7 @@ def generate(out_dir: str) -> dict[str, int]:
     for i in range(N_LOANS):
         loan_id = f"L{i:04d}"
         borrower_id = f"B{i % 37:04d}"
-        principal = float(rng.randrange(50000, 300000)) / 100.0  # $500–$3000
+        principal = float(rng.randrange(50000, 300000)) / 100.0  # $500 to $3000
         apr = rng.choice([0.0, 0.10, 0.15, 0.22])
         start = date(2026, 1, 1) + timedelta(days=i)
 

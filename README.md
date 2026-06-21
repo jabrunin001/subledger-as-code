@@ -1,9 +1,6 @@
 # Subledger-as-Code
 
-A runnable, double-entry **BNPL loan subledger** in dbt + DuckDB whose **substantive
-reconciliation control provably catches a posting bug** — packaged with a Python CLI
-that produces auditor-ready, tamper-evident evidence. Built to mirror a SOX-compliant
-financial-close platform.
+A small, runnable double-entry BNPL loan subledger built in dbt and DuckDB. The point of it is a reconciliation control that catches a real posting bug, plus a Python CLI that packages the result as tamper-evident, auditor-ready evidence. It is modeled on how a SOX financial close actually works.
 
 ## Architecture
 
@@ -14,12 +11,13 @@ seeds (synthetic events) → staging → int_postings (posting engine) → facts
                                                                  (source-to-ledger reconciliation)
 ```
 
-- **Posting engine** (`macros/post_entry.sql` + `seeds/posting_rules.csv` + `models/intermediate/int_postings.sql`): every event fans out into balanced double-entry legs, driven by data, not hardcoded SQL.
-- **Two invariants:** (1) every entry's debits = credits (internal consistency); (2) ledger balances = balances re-derived independently from source events (substantive reconciliation).
+The posting engine (`macros/post_entry.sql` + `seeds/posting_rules.csv` + `models/intermediate/int_postings.sql`) turns every event into balanced double-entry legs. The rules live in data, not in hardcoded SQL.
+
+Two invariants hold the whole thing together. First, every entry's debits equal its credits (internal consistency). Second, the ledger balances match balances re-derived independently from the source events (substantive reconciliation).
 
 ## 60-second quickstart
 
-Requires Python 3.11+ (see `.python-version`).
+Needs Python 3.11+ (see `.python-version`).
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
@@ -31,16 +29,15 @@ cat evidence/evidence-*/control_attestation.md   # macOS/Linux; or: open <path> 
 
 No warehouse, no credentials, no network. It just runs.
 
-The clean build completes with PASS=57, ERROR=0. The attestation file reads **PASS**.
+A clean build finishes at PASS=57, ERROR=0, and the attestation file reads PASS.
 
 ## The control in action
 
-A trial balance can't catch a *right-amount, wrong-account* error — only a substantive
-reconciliation can. Prove it:
+A trial balance can't catch a right-amount, wrong-account error. Only a substantive reconciliation can. Here is the proof:
 
 ```bash
 # Inject a realistic bug: payment interest credited to Cash instead of Interest Income.
-# (Exclude unit tests from this build — they assert the *correct* posting and would otherwise
+# (Exclude unit tests from this build. They assert the *correct* posting and would otherwise
 #  halt the run before the break reaches the materialized tables.)
 dbt build --profiles-dir . --vars 'inject_break: true' --exclude resource_type:unit_test
 dbt test  --profiles-dir . --vars 'inject_break: true' --select assert_trial_balance assert_entries_balanced   # both stay GREEN
@@ -49,15 +46,11 @@ dbt test  --profiles-dir . --vars 'inject_break: true' --select assert_rollforwa
 dbt build --profiles-dir .
 ```
 
-Both internal-consistency controls stay green; the source-to-ledger reconciliation
-goes red (FAIL 2, naming the offending accounts). The CI `control-proof` job asserts
-exactly this.
+Both internal-consistency controls stay green. The source-to-ledger reconciliation goes red (FAIL 2, naming the offending accounts). The CI `control-proof` job checks exactly this.
 
 ## From detection to triage
 
-v1 *caught* the break; v2 *explains* it. Triage clusters the reconciliation variances,
-classifies the root cause, points at the implicated posting rule, and writes a plain-English
-explanation — deterministically, no LLM required:
+v1 catches the break. v2 explains it. Triage groups the reconciliation variances, works out the root cause, points at the posting rule responsible, and writes a plain-English explanation. All of it is deterministic, with no LLM involved:
 
 ```bash
 # inject the break so the reconciliation variance exists (see "control in action" for why --exclude):
@@ -72,7 +65,7 @@ Output (deterministic):
 
 _Backend requested: heuristic_
 
-## cash+interest_income — wrong_account (high confidence)
+## cash+interest_income: wrong_account (high confidence)
 
 - Accounts: cash, interest_income
 - Net variance: +0.00
@@ -81,19 +74,17 @@ _Backend requested: heuristic_
 
 Accounts cash and interest_income diverge from their source-derived expectations by offsetting
 amounts (net +0.00 ≈ 0: cash +4394.83, interest_income -4394.83), indicating value was
-reallocated between them rather than created or lost — most consistent with a posting leg
-targeting the wrong account. Both accounts are posted by the 'payment' entry; the leg
-crediting 'interest_income' (rule payment/3, amount_source 'interest') is the leading
-suspect for misrouting.
+reallocated between them rather than created or lost. That points to a posting leg targeting
+the wrong account. Both accounts are posted by the 'payment' entry; the leg crediting
+'interest_income' (rule payment/3, amount_source 'interest') is the leading suspect for
+misrouting.
 
 **Next step:** Inspect the candidate posting rules for a leg posting to the wrong account;
 correct it and re-run reconciliation. The trial-balance control will stay green (this is a
-balanced reallocation) — only the substantive source-to-ledger reconciliation catches it.
+balanced reallocation); only the substantive source-to-ledger reconciliation catches it.
 ```
 
-`pack` embeds this deterministic triage (`triage.json` + `triage.md`) into the checksummed evidence
-pack, so the auditor evidence now triages each exception, not just records it. The `control-proof` CI
-job asserts this classification.
+`pack` embeds this deterministic triage (`triage.json` and `triage.md`) in the checksummed evidence pack, so the auditor evidence now explains each exception instead of just recording it. The `control-proof` CI job asserts the classification.
 
 ### Optional: richer explanations with a local LLM
 
@@ -102,10 +93,7 @@ ollama pull llama3.1:8b
 python -m audit_cli.cli triage --backend ollama
 ```
 
-With Ollama running, the `--backend ollama` path produces a richer natural-language explanation for the
-same finding. **Local, private inference:** the prompt — financial variances and posting rules — never
-leaves the machine. Classification stays deterministic (the local model enriches the prose but cannot
-change the root cause), and if Ollama isn't available the command silently falls back to the heuristic.
+With Ollama running, `--backend ollama` writes a fuller natural-language explanation for the same finding. Everything stays on your machine: the prompt, which carries the financial variances and posting rules, never leaves the box. The classification stays deterministic too, because the local model only rewrites the prose and cannot change the root cause. If Ollama isn't running, the command quietly falls back to the heuristic.
 
 > _Recorded example (local llama3.1; your wording will vary):_
 > "The payment entry's interest component appears to be crediting Cash instead of Interest Income:
@@ -129,12 +117,8 @@ change the root cause), and if Ollama isn't available the command silently falls
 
 ## Running on Snowflake
 
-The default target is DuckDB so this clones-and-runs free. To run on Snowflake, set the
-`SNOWFLAKE_*` env vars (see `profiles.yml`) and `dbt build --profiles-dir . --target snowflake`.
-Apply `snowflake/rbac.sql`, `snowflake/masking_policies.sql`, and `snowflake/clustering.sql`
-first. Clustering `fct_journal_lines` by `(month, account_id)` prunes micro-partitions on the
-period+account reconciliation queries; size the warehouse to XS for this data volume.
+DuckDB is the default target, so the repo clones and runs for free. To run on Snowflake, set the `SNOWFLAKE_*` env vars (see `profiles.yml`) and run `dbt build --profiles-dir . --target snowflake`. Apply `snowflake/rbac.sql`, `snowflake/masking_policies.sql`, and `snowflake/clustering.sql` first. Clustering `fct_journal_lines` by `(month, account_id)` prunes micro-partitions on the period-and-account reconciliation queries, and an XS warehouse is plenty for this data volume.
 
 ## Roadmap
 
-- **Spec 3 (optional) — Snowflake deep-dive:** live trial account with query-profile teardown.
+- Spec 3 (optional): a Snowflake deep-dive with a live trial account and a query-profile teardown.

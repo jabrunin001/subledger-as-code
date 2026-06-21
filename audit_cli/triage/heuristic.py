@@ -71,7 +71,7 @@ def _explain_wrong_account(cluster, candidate_rules, context) -> tuple[str, str]
     text = (
         f"Accounts {' and '.join(accounts)} diverge from their source-derived expectations by "
         f"offsetting amounts (net {net:+.2f} ≈ 0: {var_str}), indicating value was reallocated "
-        f"between them rather than created or lost — most consistent with a posting leg targeting "
+        f"between them rather than created or lost. That points to a posting leg targeting "
         f"the wrong account."
     )
     if shared_event:
@@ -86,7 +86,7 @@ def _explain_wrong_account(cluster, candidate_rules, context) -> tuple[str, str]
     next_step = (
         "Inspect the candidate posting rules for a leg posting to the wrong account; correct it and "
         "re-run reconciliation. The trial-balance control will stay green (this is a balanced "
-        "reallocation) — only the substantive source-to-ledger reconciliation catches it."
+        "reallocation); only the substantive source-to-ledger reconciliation catches it."
     )
     return text, next_step
 
@@ -95,7 +95,7 @@ def _explain_value_imbalance(cluster, candidate_rules, net) -> tuple[str, str]:
     accounts = sorted(v.account_id for v in cluster)
     text = (
         f"Account(s) {', '.join(accounts)} show a net variance of {net:+.2f} that does not net to zero "
-        f"against another account, indicating aggregate value changed — a missing or duplicated leg, "
+        f"against another account, indicating aggregate value changed: a missing or duplicated leg, "
         f"or an amount error, rather than a reallocation. (A true global imbalance would also trip the "
         f"trial-balance control; a single-account residual points at that account's source postings.)"
     )

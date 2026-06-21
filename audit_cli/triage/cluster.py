@@ -7,7 +7,7 @@ def cluster_variances(variances: list[Variance], tol: float = TOL) -> list[list[
     """Group variances into clusters.
 
     A positive and an opposite-sign variance of equal magnitude (within ``tol``)
-    form one cluster — a balanced reallocation between two accounts. Any variance
+    form one cluster (a balanced reallocation between two accounts). Any variance
     that cannot be paired is its own singleton cluster. Deterministic: items are
     sorted by ``(-abs(variance), account_id)`` before greedy matching.
 
