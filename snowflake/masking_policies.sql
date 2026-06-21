@@ -1,7 +1,7 @@
 -- Column-level masking so auditors (auditor_ro) never see raw borrower PII,
 -- while the transformer role retains full access for reconciliation.
 
-create masking policy if not exists mask_borrower as (val string)
+create masking policy if not exists subledger.analytics.mask_borrower as (val string)
   returns string ->
     case
       when current_role() in ('SUBLEDGER_TRANSFORMER') then val
@@ -9,4 +9,4 @@ create masking policy if not exists mask_borrower as (val string)
     end;
 
 alter table subledger.analytics.dim_loan
-  modify column borrower_id set masking policy mask_borrower;
+  modify column borrower_id set masking policy subledger.analytics.mask_borrower;
