@@ -1,0 +1,22 @@
+version: 2
+
+semantic_models:
+  - name: balances
+    model: ref('mart_balances')
+    defaults:
+      agg_time_dimension: ds
+    entities:
+      - name: account
+        type: primary
+        expr: account_id
+    dimensions:
+      - name: account_type
+        type: categorical
+      - name: ds
+        type: time
+        type_params:
+          time_granularity: day
+    measures:
+      - name: total_balance
+        agg: sum
+        expr: balance

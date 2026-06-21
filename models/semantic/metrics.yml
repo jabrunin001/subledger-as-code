@@ -1,0 +1,38 @@
+version: 2
+
+metrics:
+  - name: total_balance
+    label: "Total Balance"
+    type: simple
+    type_params:
+      measure: total_balance
+
+  - name: loans_receivable_balance
+    label: "Loans Receivable Balance"
+    type: simple
+    type_params:
+      measure: total_balance
+    filter: "{{ Dimension('account__account_type') }} = 'asset'"
+
+  - name: interest_income
+    label: "Interest Income (credit-normal, reported positive)"
+    type: derived
+    type_params:
+      expr: "-1 * total_balance_revenue"
+      metrics:
+        - name: total_balance
+          alias: total_balance_revenue
+          filter: "{{ Dimension('account__account_type') }} = 'revenue'"
+
+  - name: charge_off_rate
+    label: "Charge-off Expense as share of Loans Receivable"
+    type: derived
+    type_params:
+      expr: "case when lr = 0 then 0 else co / lr end"
+      metrics:
+        - name: total_balance
+          alias: co
+          filter: "{{ Dimension('account__account_type') }} = 'expense'"
+        - name: total_balance
+          alias: lr
+          filter: "{{ Dimension('account__account_type') }} = 'asset'"
