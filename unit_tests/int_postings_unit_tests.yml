@@ -1,0 +1,66 @@
+version: 2
+
+unit_tests:
+  - name: origination_posts_dr_loans_receivable_cr_cash
+    model: int_postings
+    given:
+      - input: ref('stg_originations')
+        rows:
+          - {event_id: 'ORIG-L0001', event_type: 'origination', loan_id: 'L0001', event_date: '2026-01-01', principal_amount: 1000.00, interest_amount: 0.00, total_amount: 1000.00}
+      - input: ref('stg_payments')
+        rows: []
+      - input: ref('stg_charge_offs')
+        rows: []
+      - input: ref('posting_rules')
+        rows:
+          - {event_type: 'origination', leg: 1, account_id: 'loans_receivable', dr_cr: 'debit', amount_source: 'principal'}
+          - {event_type: 'origination', leg: 2, account_id: 'cash', dr_cr: 'credit', amount_source: 'principal'}
+    expect:
+      rows:
+        - {journal_entry_id: 'ORIG-L0001', account_id: 'loans_receivable', dr_amount: 1000.00, cr_amount: 0.00}
+        - {journal_entry_id: 'ORIG-L0001', account_id: 'cash', dr_amount: 0.00, cr_amount: 1000.00}
+
+  - name: payment_splits_principal_and_interest
+    model: int_postings
+    given:
+      - input: ref('stg_originations')
+        rows: []
+      - input: ref('stg_payments')
+        rows:
+          - {event_id: 'PAY-L0001-01', event_type: 'payment', loan_id: 'L0001', event_date: '2026-02-01', principal_amount: 80.00, interest_amount: 12.50, total_amount: 92.50}
+      - input: ref('stg_charge_offs')
+        rows: []
+      - input: ref('posting_rules')
+        rows:
+          - {event_type: 'payment', leg: 1, account_id: 'cash', dr_cr: 'debit', amount_source: 'total'}
+          - {event_type: 'payment', leg: 2, account_id: 'loans_receivable', dr_cr: 'credit', amount_source: 'principal'}
+          - {event_type: 'payment', leg: 3, account_id: 'interest_income', dr_cr: 'credit', amount_source: 'interest'}
+    expect:
+      rows:
+        - {journal_entry_id: 'PAY-L0001-01', account_id: 'cash', dr_amount: 92.50, cr_amount: 0.00}
+        - {journal_entry_id: 'PAY-L0001-01', account_id: 'loans_receivable', dr_amount: 0.00, cr_amount: 80.00}
+        - {journal_entry_id: 'PAY-L0001-01', account_id: 'interest_income', dr_amount: 0.00, cr_amount: 12.50}
+
+  - name: inject_break_routes_interest_to_cash
+    model: int_postings
+    overrides:
+      vars:
+        inject_break: true
+    given:
+      - input: ref('stg_originations')
+        rows: []
+      - input: ref('stg_payments')
+        rows:
+          - {event_id: 'PAY-L0001-01', event_type: 'payment', loan_id: 'L0001', event_date: '2026-02-01', principal_amount: 80.00, interest_amount: 12.50, total_amount: 92.50}
+      - input: ref('stg_charge_offs')
+        rows: []
+      - input: ref('posting_rules')
+        rows:
+          - {event_type: 'payment', leg: 1, account_id: 'cash', dr_cr: 'debit', amount_source: 'total'}
+          - {event_type: 'payment', leg: 2, account_id: 'loans_receivable', dr_cr: 'credit', amount_source: 'principal'}
+          - {event_type: 'payment', leg: 3, account_id: 'interest_income', dr_cr: 'credit', amount_source: 'interest'}
+    expect:
+      rows:
+        - {journal_entry_id: 'PAY-L0001-01', account_id: 'cash', dr_amount: 92.50, cr_amount: 0.00}
+        - {journal_entry_id: 'PAY-L0001-01', account_id: 'loans_receivable', dr_amount: 0.00, cr_amount: 80.00}
+        - {journal_entry_id: 'PAY-L0001-01', account_id: 'cash', dr_amount: 0.00, cr_amount: 12.50}

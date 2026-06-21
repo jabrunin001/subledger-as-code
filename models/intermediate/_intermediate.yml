@@ -1,0 +1,11 @@
+version: 2
+
+models:
+  - name: int_postings
+    description: "Posting engine. Each event fans out into balanced double-entry legs via the post_entry macro and posting_rules seed."
+    columns:
+      - name: journal_line_id
+        data_tests: [not_null, unique]
+      - name: account_id
+        data_tests:
+          - relationships: { to: ref('chart_of_accounts'), field: account_id }
