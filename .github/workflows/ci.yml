@@ -24,6 +24,8 @@ jobs:
       - run: pip install -r requirements.txt
       - run: chmod +x scripts/assert_break_caught.sh
       - run: ./scripts/assert_break_caught.sh
+      - run: chmod +x scripts/assert_triage_explains.sh
+      - run: ./scripts/assert_triage_explains.sh
 
   cli-tests:
     runs-on: ubuntu-latest
