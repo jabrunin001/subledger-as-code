@@ -62,7 +62,7 @@ explanation — deterministically, no LLM required:
 ```bash
 # inject the break so the reconciliation variance exists (see "control in action" for why --exclude):
 dbt build --profiles-dir . --vars 'inject_break: true' --exclude resource_type:unit_test
-subledger-audit triage --backend heuristic
+python -m audit_cli.cli triage --backend heuristic
 ```
 
 Output (deterministic):
@@ -99,7 +99,7 @@ job asserts this classification.
 
 ```bash
 ollama pull llama3.1:8b
-subledger-audit triage --backend ollama
+python -m audit_cli.cli triage --backend ollama
 ```
 
 With Ollama running, the `--backend ollama` path produces a richer natural-language explanation for the
