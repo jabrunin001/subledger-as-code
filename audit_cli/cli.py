@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import typer
@@ -15,15 +16,13 @@ def _git_sha() -> str:
     except Exception:
         return "nogit"
 
-def _dbt_version() -> str:
+def _dbt_version_from_run_results(path: str) -> str:
     try:
-        out = subprocess.check_output(["dbt", "--version"], text=True)
-        for line in out.splitlines():
-            if "installed" in line:
-                return line.split(":")[-1].strip()
+        with open(path) as f:
+            data = json.load(f)
+        return data["metadata"]["dbt_version"]
     except Exception:
-        pass
-    return "unknown"
+        return "unknown"
 
 def _query_variances(duckdb_path: str) -> list[dict]:
     import duckdb
@@ -60,9 +59,12 @@ def pack(out_dir: str = typer.Option("evidence", "--out")):
     lineage = dbt_artifacts.parse_lineage(os.path.join(TARGET_DIR, "manifest.json"))
     duckdb_path = os.environ.get("DBT_DUCKDB_PATH", "subledger.duckdb")
     recon_md = reconciliation.render_statement(_query_variances(duckdb_path))
+    run_results_path = os.path.join(TARGET_DIR, "run_results.json")
     pack_dir = pack_mod.build_pack(
         out_dir=out_dir, results=results, lineage=lineage,
-        reconciliation_md=recon_md, dbt_version=_dbt_version(), git_sha=_git_sha(),
+        reconciliation_md=recon_md,
+        dbt_version=_dbt_version_from_run_results(run_results_path),
+        git_sha=_git_sha(),
     )
     typer.echo(f"Evidence pack written to {pack_dir}")
 

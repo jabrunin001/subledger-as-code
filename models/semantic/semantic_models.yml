@@ -12,6 +12,9 @@ semantic_models:
     dimensions:
       - name: account_type
         type: categorical
+      - name: account_id
+        type: categorical
+        expr: account_id
       - name: ds
         type: time
         type_params:

@@ -12,7 +12,7 @@ metrics:
     type: simple
     type_params:
       measure: total_balance
-    filter: "{{ Dimension('account__account_type') }} = 'asset'"
+    filter: "{{ Dimension('account__account_id') }} = 'loans_receivable'"
 
   - name: interest_income
     label: "Interest Income (credit-normal, reported positive)"
@@ -32,7 +32,7 @@ metrics:
       metrics:
         - name: total_balance
           alias: co
-          filter: "{{ Dimension('account__account_type') }} = 'expense'"
+          filter: "{{ Dimension('account__account_id') }} = 'charge_off_expense'"
         - name: total_balance
           alias: lr
-          filter: "{{ Dimension('account__account_type') }} = 'asset'"
+          filter: "{{ Dimension('account__account_id') }} = 'loans_receivable'"
