@@ -53,7 +53,7 @@ Both internal-consistency controls stay green; the source-to-ledger reconciliati
 goes red (FAIL 2, naming the offending accounts). The CI `control-proof` job asserts
 exactly this.
 
-## JD-competency map
+## Capability map
 
 | Requirement | Where it lives |
 | --- | --- |
