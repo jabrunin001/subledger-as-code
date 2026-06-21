@@ -3,6 +3,10 @@ import os
 import subprocess
 import typer
 from . import dbt_artifacts, pack as pack_mod, reconciliation
+from .triage.context import load_context
+from .triage.engine import run_triage
+from .triage.render import render_triage_md
+from .triage.ollama_backend import OllamaClient
 
 app = typer.Typer(help="Subledger audit-evidence packaging CLI.")
 
@@ -77,6 +81,32 @@ def verify(pack_dir: str):
             typer.echo(f"TAMPERED: {name}")
         raise typer.Exit(code=1)
     typer.echo("Pack verified: all checksums match.")
+
+def _ollama_from_env() -> OllamaClient:
+    return OllamaClient(
+        model=os.environ.get("OLLAMA_MODEL", "llama3.1:8b"),
+        host=os.environ.get("OLLAMA_HOST", "http://localhost:11434"),
+    )
+
+
+@app.command()
+def triage(
+    backend: str = typer.Option("heuristic", "--backend",
+                                help="heuristic | ollama | auto"),
+    out: str = typer.Option("", "--out", help="write triage.md here; else print to stdout"),
+):
+    """Triage reconciliation variances: classify, locate, and explain."""
+    duckdb_path = os.environ.get("DBT_DUCKDB_PATH", "subledger.duckdb")
+    context = load_context(duckdb_path, run_label=_git_sha())
+    ollama = _ollama_from_env() if backend in ("ollama", "auto") else None
+    report = run_triage(context, backend=backend, ollama=ollama)
+    md = render_triage_md(report)
+    if out:
+        with open(out, "w") as f:
+            f.write(md)
+        typer.echo(f"Triage written to {out}")
+    else:
+        typer.echo(md)
 
 if __name__ == "__main__":
     app()
