@@ -1,7 +1,7 @@
 import json
 import urllib.request
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 from .models import Account, RootCause, TriageContext, Variance
 
@@ -46,7 +46,9 @@ class OllamaClient:
             return OllamaProse.model_validate(json.loads(raw))
         except OllamaError:
             raise
-        except (ValidationError, json.JSONDecodeError, KeyError, ValueError, OSError, Exception) as e:
+        except Exception as e:
+            # Any Ollama/transport/parse/validation failure is surfaced as OllamaError
+            # so the engine can fall back to the deterministic heuristic for this cluster.
             raise OllamaError(str(e)) from e
 
     def _build_prompt(self, cluster: list[Variance], context: TriageContext) -> str:

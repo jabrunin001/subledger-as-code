@@ -57,3 +57,8 @@ def test_explain_raises_on_transport_error():
     t = FakeTransport({"tags": {"models": []}, "generate": TimeoutError("slow")})
     with pytest.raises(OllamaError):
         OllamaClient("llama3.1:8b", "http://h", transport=t).explain(CLUSTER, CTX)
+
+def test_explain_raises_on_missing_response_key():
+    t = FakeTransport({"tags": {"models": []}, "generate": {"error": "model not found"}})
+    with pytest.raises(OllamaError):
+        OllamaClient("llama3.1:8b", "http://h", transport=t).explain(CLUSTER, CTX)
