@@ -1,0 +1,6 @@
+{
+  "nodes": {
+    "model.subledger.fct_journal_lines": {"unique_id": "model.subledger.fct_journal_lines", "depends_on": {"nodes": ["model.subledger.int_postings"]}},
+    "model.subledger.int_postings": {"unique_id": "model.subledger.int_postings", "depends_on": {"nodes": ["seed.subledger.posting_rules"]}}
+  }
+}

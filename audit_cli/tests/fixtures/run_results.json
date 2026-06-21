@@ -1,0 +1,8 @@
+{
+  "metadata": {"dbt_version": "1.8.0", "generated_at": "2026-06-21T00:00:00Z"},
+  "results": [
+    {"unique_id": "test.subledger.assert_trial_balance", "status": "pass", "execution_time": 0.12, "message": null},
+    {"unique_id": "test.subledger.assert_rollforward_reconciles", "status": "fail", "execution_time": 0.21, "message": "Got 2 results, configured to fail if != 0"},
+    {"unique_id": "model.subledger.fct_journal_lines", "status": "success", "execution_time": 0.40, "message": null}
+  ]
+}
