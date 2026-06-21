@@ -44,17 +44,24 @@ def generate(out_dir: str) -> dict[str, int]:
         n_paid = TERM_MONTHS if outcome > 0.4 else rng.randint(1, TERM_MONTHS - 1)
         will_charge_off = outcome <= 0.15
 
-        outstanding = principal
+        outstanding = _round(principal)
         monthly_principal = principal / TERM_MONTHS
         for m in range(1, n_paid + 1):
-            interest = outstanding * (apr / 12.0)
-            pay_principal = min(monthly_principal, outstanding)
-            outstanding -= pay_principal
+            is_last_payment = m == n_paid
+            is_settling = is_last_payment and not will_charge_off
+            if is_settling:
+                # Final payment on a fully-paid loan: absorb the exact remaining
+                # balance so the per-loan principal invariant holds to the cent.
+                pay_principal = outstanding
+            else:
+                pay_principal = _round(min(monthly_principal, outstanding))
+            interest = _round(outstanding * (apr / 12.0))
+            outstanding = _round(outstanding - pay_principal)
             pay_date = start + timedelta(days=30 * m)
             payments.append({
                 "event_id": f"PAY-{loan_id}-{m:02d}", "loan_id": loan_id,
-                "principal_amount": _round(pay_principal),
-                "interest_amount": _round(interest),
+                "principal_amount": pay_principal,
+                "interest_amount": interest,
                 "event_date": pay_date.isoformat(),
             })
 
