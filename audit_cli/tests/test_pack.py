@@ -35,5 +35,6 @@ def test_build_pack_writes_all_artifacts_and_manifest(tmp_path):
     attestation = (p / "control_attestation.md").read_text()
     assert "abc1234" in attestation
     assert "FAIL" in attestation.upper()
+    assert "1.8.0" in attestation
     # Manifest verifies clean immediately after build.
     assert pack.verify_manifest(pack_dir) == []

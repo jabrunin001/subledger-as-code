@@ -9,7 +9,7 @@ def render_statement(rows: list[dict]) -> str:
         lines.append("| _(no variances — all accounts reconcile)_ |  |  |  |")
     for r in rows:
         lines.append(
-            f"| {r['account_id']} | {r['expected_ending']:.2f} | "
-            f"{r['ledger_ending']:.2f} | {r['variance']:.2f} |"
+            f"| {r['account_id']} | {float(r['expected_ending']):.2f} | "
+            f"{float(r['ledger_ending']):.2f} | {float(r['variance']):.2f} |"
         )
     return "\n".join(lines) + "\n"

@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 
 class TestResult(BaseModel):
+    __test__ = False  # not a pytest test class
     unique_id: str
     status: str
     execution_time: float = 0.0
