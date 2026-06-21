@@ -1,0 +1,3 @@
+# v1 intentionally uses zero dbt packages to keep clone-and-run friction at zero.
+# Surrogate keys are built with native SQL concatenation rather than dbt_utils.
+packages: []

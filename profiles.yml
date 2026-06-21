@@ -1,0 +1,17 @@
+subledger:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('DBT_DUCKDB_PATH', 'subledger.duckdb') }}"
+      threads: 4
+    snowflake:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT', 'unset') }}"
+      user: "{{ env_var('SNOWFLAKE_USER', 'unset') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD', 'unset') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'SUBLEDGER_TRANSFORMER') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'SUBLEDGER') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'SUBLEDGER_WH') }}"
+      schema: "{{ env_var('SNOWFLAKE_SCHEMA', 'ANALYTICS') }}"
+      threads: 4

@@ -1,0 +1,29 @@
+name: 'subledger'
+version: '1.0.0'
+config-version: 2
+profile: 'subledger'
+
+model-paths: ["models", "unit_tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+vars:
+  inject_break: false
+
+seeds:
+  subledger:
+    +schema: raw
+
+models:
+  subledger:
+    staging:
+      +materialized: view
+    intermediate:
+      +materialized: view
+    marts:
+      +materialized: table
+    semantic:
+      +materialized: table
