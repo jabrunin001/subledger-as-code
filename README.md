@@ -26,7 +26,7 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 dbt build --profiles-dir .            # seeds → models → tests, all on DuckDB
 python -m audit_cli.cli pack --out evidence
-open evidence/evidence-*/control_attestation.md
+cat evidence/evidence-*/control_attestation.md   # macOS/Linux; or: open <path> (macOS)
 ```
 
 No warehouse, no credentials, no network. It just runs.
@@ -43,13 +43,13 @@ reconciliation can. Prove it:
 # (Exclude unit tests from this build — they assert the *correct* posting and would otherwise
 #  halt the run before the break reaches the materialized tables.)
 dbt build --profiles-dir . --vars 'inject_break: true' --exclude resource_type:unit_test
-dbt test  --profiles-dir . --vars 'inject_break: true' --select assert_trial_balance assert_entries_balanced   # stays GREEN
-dbt test  --profiles-dir . --vars 'inject_break: true' --select assert_rollforward_reconciles                  # goes RED
+dbt test  --profiles-dir . --vars 'inject_break: true' --select assert_trial_balance assert_entries_balanced   # both stay GREEN
+dbt test  --profiles-dir . --vars 'inject_break: true' --select assert_rollforward_reconciles                  # goes RED (break caught)
 # restore the clean ledger:
 dbt build --profiles-dir .
 ```
 
-The internal-consistency checks stay green (PASS=2); the source-to-ledger reconciliation
+Both internal-consistency controls stay green; the source-to-ledger reconciliation
 goes red (FAIL 2, naming the offending accounts). The CI `control-proof` job asserts
 exactly this.
 
@@ -60,7 +60,7 @@ exactly this.
 | Production dbt (models, tests, macros, docs) | `models/`, `tests/`, `macros/post_entry.sql`, `_*.yml` |
 | dbt unit tests | `unit_tests/int_postings_unit_tests.yml` |
 | Dimensional modeling | `models/marts/` (facts + conformed dims) |
-| SQL + correctness-critical logic | posting engine + reconciliation models |
+| SQL + correctness-critical logic | posting engine + reconciliation models (`models/intermediate/int_postings.sql`, `models/marts/fct_balance_rollforward.sql`) |
 | Python for financial data | `audit_cli/` (Typer + Pydantic), `scripts/seed_events.py` |
 | CI | `.github/workflows/ci.yml` (build+test, control-proof, cli-tests) |
 | SOX controls / audit evidence | `tests/assert_*.sql`, `audit_cli/` evidence packs |
