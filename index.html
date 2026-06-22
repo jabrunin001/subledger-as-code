@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Subledger-as-Code · James Bruning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#ECEFEC;
+    --paper-2:#E3E7E3;
+    --card:#F6F8F6;
+    --ink:#131A1E;
+    --ink-soft:#4A5560;
+    --ink-faint:#8A9690;
+    --rule:rgba(19,26,30,0.14);
+    --rule-soft:rgba(19,26,30,0.08);
+    --green:#15795C;
+    --green-deep:#0F5C45;
+    --green-band:rgba(21,121,92,0.07);
+    --red:#C0392B;
+    --red-deep:#9B271B;
+    --red-wash:rgba(192,57,43,0.07);
+    --blue:#2F5AA6;
+    --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    --maxw:1080px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:17px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  /* faint paper grain */
+  body::before{
+    content:"";
+    position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:
+      linear-gradient(var(--rule-soft) 1px,transparent 1px);
+    background-size:100% 28px;
+    opacity:.5;
+  }
+  .wrap{position:relative;z-index:1;max-width:var(--maxw);margin:0 auto;padding:0 28px}
+
+  a{color:var(--blue);text-decoration:none;border-bottom:1px solid rgba(47,90,166,.35)}
+  a:hover{border-bottom-color:var(--blue)}
+
+  .mono{font-family:var(--mono)}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+  /* ---- working-paper section header ---- */
+  .section{padding:64px 0;border-top:1px solid var(--rule)}
+  .wp-head{display:flex;align-items:baseline;gap:18px;margin-bottom:30px}
+  .wp-ref{
+    font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.12em;
+    color:var(--green-deep);border:1px solid var(--green);border-radius:2px;
+    padding:4px 8px;white-space:nowrap;
+  }
+  .wp-title{font-family:var(--mono);font-weight:700;font-size:clamp(20px,3vw,28px);letter-spacing:-.01em;margin:0;line-height:1.15}
+  .wp-kicker{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 8px}
+  .lede{font-size:clamp(18px,2.4vw,21px);line-height:1.5;max-width:62ch;color:var(--ink)}
+  .body-narrow{max-width:64ch;color:var(--ink-soft)}
+  .body-narrow strong{color:var(--ink)}
+
+  /* ============ MASTHEAD ============ */
+  header.mast{position:relative;z-index:1;padding-top:34px}
+  .mast-top{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;
+    font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--ink-soft);
+    border-bottom:1px solid var(--ink);padding-bottom:12px;flex-wrap:wrap}
+  .mast-top .lbl{color:var(--ink-faint)}
+  .hero{padding:54px 0 60px}
+  .hero h1{
+    font-family:var(--mono);font-weight:700;
+    font-size:clamp(38px,8.4vw,84px);line-height:.98;letter-spacing:-.03em;
+    margin:0 0 26px;
+  }
+  .hero h1 .dash{color:var(--green)}
+  .hero .thesis{font-size:clamp(20px,3.1vw,29px);line-height:1.35;max-width:24ch;font-weight:500;margin:0 0 14px}
+  .hero .thesis b{color:var(--green-deep);font-weight:600}
+  .hero .sub{max-width:60ch;color:var(--ink-soft);font-size:18px}
+  .hero-cta{display:flex;align-items:center;gap:16px;margin-top:30px;flex-wrap:wrap}
+  .ghlink{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:13px;font-weight:700;
+    letter-spacing:.04em;color:var(--paper);background:var(--ink);border:1px solid var(--ink);border-radius:4px;
+    padding:11px 16px;text-decoration:none;transition:background .2s,border-color .2s,color .2s}
+  .hero-cta .ghlink:hover{background:var(--green-deep);border-color:var(--green-deep);color:#fff}
+  .ghlink svg{width:17px;height:17px;fill:currentColor;flex:none}
+  .repo-path{font-family:var(--mono);font-size:12.5px;color:var(--ink-faint);word-break:break-all}
+
+  .hero-grid{display:grid;grid-template-columns:1.35fr .9fr;gap:48px;align-items:start}
+  @media(max-width:760px){.hero-grid{grid-template-columns:1fr;gap:30px}}
+
+  /* attestation stamp block */
+  .attest{
+    border:1px solid var(--rule);background:var(--card);border-radius:4px;padding:0;overflow:hidden;
+  }
+  .attest-h{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-faint);padding:12px 16px;border-bottom:1px solid var(--rule-soft);
+    display:flex;justify-content:space-between}
+  .attest-body{padding:18px 16px}
+  .attest-row{display:flex;justify-content:space-between;align-items:baseline;
+    font-family:var(--mono);font-size:13px;padding:7px 0;border-bottom:1px dotted var(--rule-soft)}
+  .attest-row:last-child{border-bottom:0}
+  .attest-row .k{color:var(--ink-soft)}
+  .attest-row .v{font-weight:700}
+  .v.ok{color:var(--green-deep)}
+  .stamp{
+    margin:8px 16px 18px;border:2.5px solid var(--green);color:var(--green-deep);
+    border-radius:4px;text-align:center;padding:10px;
+    font-family:var(--mono);font-weight:700;letter-spacing:.28em;font-size:18px;
+    transform:rotate(-2.2deg);opacity:.92;
+  }
+
+  /* ============ T-account mini ============ */
+  .taccount{display:grid;grid-template-columns:1fr 1fr;max-width:420px;margin-top:26px;
+    border:1px solid var(--rule);background:var(--card);font-family:var(--mono);font-size:13px}
+  .taccount .th{grid-column:1/3;text-align:center;font-weight:700;padding:8px;border-bottom:2px solid var(--ink);letter-spacing:.04em}
+  .taccount .col{padding:10px 14px}
+  .taccount .col.dr{border-right:1px solid var(--rule)}
+  .taccount .ch{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px}
+  .taccount .ln{display:flex;justify-content:space-between;padding:3px 0}
+  .taccount .bad{color:var(--red);font-weight:700}
+
+  /* ============ pipeline svg ============ */
+  .pipe-wrap{border:1px solid var(--rule);background:var(--card);border-radius:4px;padding:10px;overflow-x:auto}
+  .pipe-note{font-family:var(--mono);font-size:12px;color:var(--ink-faint);margin-top:14px}
+
+  /* ============ stats ============ */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--rule);background:var(--card)}
+  @media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+  .stat{padding:26px 22px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+  .stat:nth-child(4n){border-right:0}
+  @media(max-width:760px){.stat:nth-child(even){border-right:0}}
+  .stat .n{font-family:var(--mono);font-weight:700;font-size:clamp(26px,4.4vw,40px);line-height:1;letter-spacing:-.02em}
+  .stat .l{font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-faint);margin-top:10px}
+
+  /* ============ interactive control panel ============ */
+  .panel{border:1px solid var(--ink);background:var(--card);border-radius:5px;overflow:hidden}
+  .panel-bar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;
+    padding:16px 20px;background:var(--ink);color:var(--paper)}
+  .panel-bar .pb-t{font-family:var(--mono);font-size:13px;letter-spacing:.08em}
+  .panel-bar .pb-t b{color:#fff}
+  .toggle{display:inline-flex;align-items:center;gap:12px;cursor:pointer;user-select:none;
+    font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:#cdd6d2}
+  .toggle input{position:absolute;opacity:0;width:0;height:0}
+  .track{width:50px;height:26px;border-radius:14px;background:#2c3940;position:relative;transition:background .25s;flex:none;border:1px solid #3a474e}
+  .knob{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--paper);transition:transform .25s}
+  .toggle input:checked + .track{background:var(--red)}
+  .toggle input:checked + .track .knob{transform:translateX(24px)}
+  .toggle input:focus-visible + .track{outline:2px solid #fff;outline-offset:2px}
+  .toggle .state-on{color:var(--red);font-weight:700;display:none}
+  .panel.broken .toggle .state-off{display:none}
+  .panel.broken .toggle .state-on{display:inline}
+
+  .controls{display:grid;grid-template-columns:repeat(3,1fr);gap:0}
+  @media(max-width:760px){.controls{grid-template-columns:1fr}}
+  .ctrl{padding:22px 20px;border-right:1px solid var(--rule);position:relative;transition:background .3s}
+  .ctrl:last-child{border-right:0}
+  @media(max-width:760px){.ctrl{border-right:0;border-bottom:1px solid var(--rule)}.ctrl:last-child{border-bottom:0}}
+  .ctrl .ctrl-name{font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.02em;margin-bottom:4px}
+  .ctrl .ctrl-kind{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:18px}
+  .ctrl .verdict{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-weight:700;font-size:15px}
+  .dot{width:11px;height:11px;border-radius:50%;flex:none}
+  .dot.g{background:var(--green);box-shadow:0 0 0 4px var(--green-band)}
+  .dot.r{background:var(--red);box-shadow:0 0 0 4px var(--red-wash)}
+  .verdict.pass{color:var(--green-deep)}
+  .verdict.fail{color:var(--red)}
+  .ctrl .detail{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);margin-top:12px;line-height:1.5;min-height:34px}
+  .ctrl.is-fail{background:var(--red-wash)}
+  .ctrl.is-fail::after{
+    content:"FAIL";position:absolute;top:16px;right:14px;
+    font-family:var(--mono);font-weight:700;letter-spacing:.2em;font-size:13px;color:var(--red);
+    border:2px solid var(--red);border-radius:3px;padding:2px 7px;transform:rotate(-7deg);
+    animation:thud .4s cubic-bezier(.2,1.4,.4,1) both;
+  }
+  @keyframes thud{0%{transform:rotate(-7deg) scale(2.4);opacity:0}60%{opacity:1}100%{transform:rotate(-7deg) scale(1);opacity:1}}
+
+  .panel-foot{border-top:1px solid var(--rule);padding:18px 20px;font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);background:var(--paper)}
+  .panel-foot .cmd{color:var(--ink);background:var(--paper-2);padding:2px 6px;border-radius:3px}
+
+  /* variance bridge */
+  .variance{margin-top:22px;border:1px dashed var(--rule);border-radius:4px;padding:20px;background:var(--card);
+    opacity:.38;filter:grayscale(.7);transition:opacity .4s,filter .4s}
+  .panel.broken ~ .variance{opacity:1;filter:none}
+  .variance .vh{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px}
+  .variance .vt{font-family:var(--sans);font-size:14px;color:var(--ink-soft);margin:0 0 18px;max-width:70ch}
+  .vbar-row{display:flex;align-items:center;gap:14px;margin:11px 0;font-family:var(--mono);font-size:13px}
+  .vbar-row .vlabel{width:140px;flex:none;text-align:right;color:var(--ink-soft)}
+  .vbar-track{flex:1;height:30px;position:relative;background:linear-gradient(90deg,transparent calc(50% - .5px),var(--rule) calc(50% - .5px),var(--rule) calc(50% + .5px),transparent calc(50% + .5px))}
+  .vbar{position:absolute;top:5px;height:20px;width:0;transition:width .7s cubic-bezier(.2,.7,.3,1) .15s}
+  .vbar.pos{left:50%;background:var(--green)}
+  .vbar.neg{right:50%;background:var(--red)}
+  .panel.broken ~ .variance .vbar.pos{width:42%}
+  .panel.broken ~ .variance .vbar.neg{width:42%}
+  .vbar-row .vamt{width:120px;flex:none;font-weight:700}
+  .vamt.pos{color:var(--green-deep)}
+  .vamt.neg{color:var(--red)}
+  .vnet{font-family:var(--mono);font-size:13px;margin-top:16px;padding-top:14px;border-top:1px dotted var(--rule);color:var(--ink-soft)}
+  .vnet b{color:var(--ink)}
+
+  /* ============ triage card ============ */
+  .triage{border:1px solid var(--rule);border-left:3px solid var(--green);background:var(--card);border-radius:4px;padding:24px 26px}
+  .triage .badge{display:inline-flex;gap:8px;align-items:center;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--green-deep);margin-bottom:14px}
+  .triage h4{font-family:var(--mono);font-size:16px;margin:0 0 14px;letter-spacing:-.01em}
+  .triage p{margin:0 0 14px;color:var(--ink-soft);max-width:72ch}
+  .triage code{font-family:var(--mono);font-size:.88em;background:var(--paper-2);padding:1px 5px;border-radius:3px;color:var(--ink)}
+  .triage .nx{font-family:var(--mono);font-size:12.5px;color:var(--ink);border-top:1px solid var(--rule-soft);padding-top:14px;margin-top:4px}
+  .triage .nx b{color:var(--green-deep)}
+
+  /* ============ capability map ============ */
+  .caps{border:1px solid var(--rule)}
+  .cap{display:grid;grid-template-columns:1fr 1.3fr;border-bottom:1px solid var(--rule);background:var(--card)}
+  .cap:last-child{border-bottom:0}
+  .cap:nth-child(odd){background:var(--paper)}
+  .cap .req{padding:14px 20px;font-weight:600;font-size:15px;border-right:1px solid var(--rule)}
+  .cap .loc{padding:14px 20px;font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center}
+  @media(max-width:620px){.cap{grid-template-columns:1fr}.cap .req{border-right:0;border-bottom:1px solid var(--rule-soft)}}
+
+  /* ============ footer ============ */
+  footer{border-top:1px solid var(--ink);padding:48px 0 70px;margin-top:24px}
+  .colophon{font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);line-height:1.8}
+  .colophon .who{color:var(--ink);font-weight:700;font-size:15px;letter-spacing:.02em}
+  .foot-grid{display:flex;justify-content:space-between;gap:30px;flex-wrap:wrap;align-items:flex-end}
+  .runs{font-family:var(--mono);font-size:12px;color:var(--green-deep);border:1px solid var(--green);border-radius:3px;padding:8px 12px}
+
+  :focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+
+  @media(prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  }
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="wrap">
+    <div class="mast-top">
+      <span><span class="lbl">PREPARED&nbsp;BY</span>&nbsp;&nbsp;James Bruning</span>
+      <span><span class="lbl">SUBJECT</span>&nbsp;&nbsp;BNPL Loan Subledger · Controls &amp; Close</span>
+      <span><span class="lbl">STATUS</span>&nbsp;&nbsp;<span style="color:var(--green-deep);font-weight:700">PASS</span></span>
+    </div>
+
+    <div class="hero">
+      <div class="hero-grid">
+        <div>
+          <h1>SUBLEDGER<span class="dash">—</span>AS<span class="dash">—</span>CODE</h1>
+          <p class="thesis">A trial balance can't catch a right-amount, wrong-account error. <b>This one can, and it proves it.</b></p>
+          <p class="sub">A runnable double-entry BNPL loan subledger built in dbt and DuckDB, with a reconciliation control that catches a real posting bug and a Python CLI that packages the result as tamper-evident, auditor-ready evidence. Modeled on how a SOX financial close actually works.</p>
+          <p class="hero-cta">
+            <a class="ghlink" href="https://github.com/jabrunin001/subledger-as-code">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+              View the source on GitHub
+            </a>
+            <span class="repo-path">github.com/jabrunin001/subledger-as-code</span>
+          </p>
+        </div>
+
+        <aside class="attest" aria-label="Build attestation">
+          <div class="attest-h"><span>Control Attestation</span><span>v1.0</span></div>
+          <div class="attest-body">
+            <div class="attest-row"><span class="k">dbt build</span><span class="v ok">57 / 57 PASS</span></div>
+            <div class="attest-row"><span class="k">errors</span><span class="v ok">0</span></div>
+            <div class="attest-row"><span class="k">journal lines</span><span class="v num">1,436</span></div>
+            <div class="attest-row"><span class="k">debits = credits</span><span class="v num">$195,949.11</span></div>
+            <div class="attest-row"><span class="k">recon variance</span><span class="v ok num">$0.00</span></div>
+          </div>
+          <div class="stamp">RECONCILED</div>
+        </aside>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<!-- ============ A · THE PROBLEM ============ -->
+<section class="section">
+  <div class="wrap">
+    <div class="wp-head">
+      <span class="wp-ref">W/P&nbsp;A</span>
+      <div>
+        <p class="wp-kicker">The problem</p>
+        <h2 class="wp-title">The control that ties out can still be wrong</h2>
+      </div>
+    </div>
+    <p class="lede">Every accountant's first check is that debits equal credits. Necessary, but not enough. Misroute a payment's interest into the wrong account and the books still balance to the penny: the entry is internally consistent, the trial balance ties out, and the money is in the wrong place.</p>
+    <p class="body-narrow" style="margin-top:22px">Catching that needs a <strong>substantive control</strong>: re-derive what each balance <em>should</em> be straight from the source events, then reconcile it against what the ledger actually posted. That's the control auditors lean on at close, and it's the one this project implements in code, in data, and in CI.</p>
+
+    <div class="taccount" role="img" aria-label="A balanced but mis-posted entry: debits equal credits while interest is routed to Cash instead of Interest Income">
+      <div class="th">Payment entry · still balances</div>
+      <div class="col dr">
+        <div class="ch">Debit</div>
+        <div class="ln"><span>Cash</span><span>100.00</span></div>
+      </div>
+      <div class="col">
+        <div class="ch">Credit</div>
+        <div class="ln"><span>Loans Receivable</span><span>90.00</span></div>
+        <div class="ln bad"><span>Cash&nbsp;✗</span><span>10.00</span></div>
+      </div>
+      <div class="th" style="border-top:1px solid var(--rule);border-bottom:0;font-size:11px;color:var(--ink-faint);font-weight:500">Dr 100.00 = Cr 100.00, yet interest never reaches Interest Income</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ B · THE SYSTEM ============ -->
+<section class="section">
+  <div class="wrap">
+    <div class="wp-head">
+      <span class="wp-ref">W/P&nbsp;B</span>
+      <div>
+        <p class="wp-kicker">The system</p>
+        <h2 class="wp-title">A posting engine, then two invariants</h2>
+      </div>
+    </div>
+    <p class="body-narrow" style="margin-bottom:26px">Every event becomes balanced double-entry legs through a data-driven posting engine. The rules live in a seed file, not in hardcoded SQL. Two invariants hold the whole thing together: <strong>every entry's debits equal its credits</strong>, and <strong>the ledger balances match balances re-derived independently from the source events</strong>.</p>
+
+    <div class="pipe-wrap">
+      <svg viewBox="0 0 980 230" width="100%" role="img" aria-label="Pipeline: seeds to staging to posting engine to facts and dimensions to reconciliation">
+        <defs>
+          <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#4A5560"/>
+          </marker>
+          <style>
+            .nx{fill:#F6F8F6;stroke:#131A1E;stroke-width:1.4}
+            .nx-hi{fill:#15795C;stroke:#0F5C45;stroke-width:1.4}
+            .nt{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;fill:#131A1E}
+            .nt-hi{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;fill:#fff}
+            .ns{font-family:'JetBrains Mono',monospace;font-size:10.5px;fill:#4A5560}
+            .ns-hi{font-family:'JetBrains Mono',monospace;font-size:10.5px;fill:#d7ece4}
+            .ln{stroke:#4A5560;stroke-width:1.4;fill:none}
+            .cap{font-family:'JetBrains Mono',monospace;font-size:10px;fill:#8A9690;letter-spacing:.08em}
+          </style>
+        </defs>
+
+        <!-- row of nodes -->
+        <g>
+          <rect class="nx" x="8"   y="64" width="138" height="58" rx="4"/>
+          <text class="nt" x="77" y="88" text-anchor="middle">seeds</text>
+          <text class="ns" x="77" y="106" text-anchor="middle">synthetic events</text>
+
+          <rect class="nx" x="190" y="64" width="138" height="58" rx="4"/>
+          <text class="nt" x="259" y="88" text-anchor="middle">staging</text>
+          <text class="ns" x="259" y="106" text-anchor="middle">typed + tested</text>
+
+          <rect class="nx" x="372" y="50" width="158" height="86" rx="4"/>
+          <text class="nt" x="451" y="80" text-anchor="middle">posting</text>
+          <text class="nt" x="451" y="98" text-anchor="middle">engine</text>
+          <text class="ns" x="451" y="118" text-anchor="middle">rules-as-data</text>
+
+          <rect class="nx" x="574" y="64" width="138" height="58" rx="4"/>
+          <text class="nt" x="643" y="88" text-anchor="middle">facts</text>
+          <text class="ns" x="643" y="106" text-anchor="middle">+ conformed dims</text>
+
+          <rect class="nx-hi" x="756" y="50" width="200" height="86" rx="4"/>
+          <text class="nt-hi" x="856" y="80" text-anchor="middle">reconciliation</text>
+          <text class="ns-hi" x="856" y="100" text-anchor="middle">source ⇄ ledger</text>
+          <text class="ns-hi" x="856" y="116" text-anchor="middle">substantive control</text>
+        </g>
+
+        <!-- arrows -->
+        <path class="ln" d="M146,93 L188,93" marker-end="url(#ar)"/>
+        <path class="ln" d="M328,93 L370,93" marker-end="url(#ar)"/>
+        <path class="ln" d="M530,93 L572,93" marker-end="url(#ar)"/>
+        <path class="ln" d="M712,93 L754,93" marker-end="url(#ar)"/>
+
+        <!-- annotations -->
+        <text class="cap" x="451" y="172" text-anchor="middle">post_entry macro · posting_rules.csv</text>
+        <path class="ln" style="stroke-dasharray:3 3" d="M451,140 L451,158" marker-end="url(#ar)"/>
+
+        <text class="cap" x="259" y="44" text-anchor="middle">invariant 1 · debits = credits</text>
+        <path class="ln" style="stroke-dasharray:3 3" d="M259,48 L259,62" marker-end="url(#ar)"/>
+
+        <text class="cap" x="856" y="44" text-anchor="middle">invariant 2 · independent re-derivation</text>
+        <path class="ln" style="stroke-dasharray:3 3" d="M856,48 L856,48"/>
+      </svg>
+    </div>
+    <p class="pipe-note">The default target is DuckDB, so the repo clones and runs with no warehouse, no credentials, and no network. A Snowflake target adds RBAC, masking policies, and clustering for the same models.</p>
+  </div>
+</section>
+
+<!-- ============ C · BY THE NUMBERS ============ -->
+<section class="section">
+  <div class="wrap">
+    <div class="wp-head">
+      <span class="wp-ref">W/P&nbsp;C</span>
+      <div>
+        <p class="wp-kicker">By the numbers</p>
+        <h2 class="wp-title">What a clean build produces</h2>
+      </div>
+    </div>
+    <div class="stats" id="stats">
+      <div class="stat"><div class="n num" data-to="499">0</div><div class="l">Source events</div></div>
+      <div class="stat"><div class="n num" data-to="1436" data-comma="1">0</div><div class="l">Journal lines</div></div>
+      <div class="stat"><div class="n num" data-prefix="$" data-to="195949" data-comma="1">$0</div><div class="l">Debits = credits</div></div>
+      <div class="stat"><div class="n num" data-to="57">0</div><div class="l">Tests passing</div></div>
+      <div class="stat"><div class="n num" data-to="50">0</div><div class="l">Loans modeled</div></div>
+      <div class="stat"><div class="n num" data-to="7">0</div><div class="l">Posting rules (in data)</div></div>
+      <div class="stat"><div class="n num" data-to="4">0</div><div class="l">Ledger accounts</div></div>
+      <div class="stat"><div class="n num" data-to="0">0</div><div class="l">Errors</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ D · THE CONTROL, LIVE ============ -->
+<section class="section">
+  <div class="wrap">
+    <div class="wp-head">
+      <span class="wp-ref">W/P&nbsp;D</span>
+      <div>
+        <p class="wp-kicker">The control · live</p>
+        <h2 class="wp-title">Inject the bug. Watch which control catches it.</h2>
+      </div>
+    </div>
+    <p class="body-narrow" style="margin-bottom:26px">Flip the switch to misroute every payment's interest into <strong>Cash</strong> instead of <strong>Interest Income</strong>, a balanced reallocation. The two internal-consistency controls don't move. Only the substantive reconciliation goes red, and it names the accounts.</p>
+
+    <div class="panel" id="panel">
+      <div class="panel-bar">
+        <span class="pb-t">posting_rules · leg <b>payment/3</b> → credit <b id="target">interest_income</b></span>
+        <label class="toggle">
+          <input type="checkbox" id="injbug" aria-label="Inject posting bug">
+          <span class="track"><span class="knob"></span></span>
+          <span class="state-off">CLEAN LEDGER</span>
+          <span class="state-on">BUG INJECTED</span>
+        </label>
+      </div>
+
+      <div class="controls">
+        <div class="ctrl" data-ctrl="balanced">
+          <div class="ctrl-name">Entries Balanced</div>
+          <div class="ctrl-kind">Internal consistency</div>
+          <div class="verdict pass"><span class="dot g"></span><span class="vtext">PASS</span></div>
+          <div class="detail">Every entry's debits equal its credits.</div>
+        </div>
+        <div class="ctrl" data-ctrl="trial">
+          <div class="ctrl-name">Trial Balance</div>
+          <div class="ctrl-kind">Internal consistency</div>
+          <div class="verdict pass"><span class="dot g"></span><span class="vtext">PASS</span></div>
+          <div class="detail">Total debits equal total credits across the ledger.</div>
+        </div>
+        <div class="ctrl" data-ctrl="recon">
+          <div class="ctrl-name">Source-to-Ledger Reconciliation</div>
+          <div class="ctrl-kind">Substantive control</div>
+          <div class="verdict pass"><span class="dot g"></span><span class="vtext">PASS</span></div>
+          <div class="detail">Ledger balances match balances re-derived from source events.</div>
+        </div>
+      </div>
+
+      <div class="panel-foot" id="foot">
+        <span class="cmd">dbt test --select assert_rollforward_reconciles</span> → <span id="footmsg" style="color:var(--green-deep);font-weight:700">PASS</span>
+      </div>
+    </div>
+
+    <!-- variance bridge -->
+    <div class="variance" aria-hidden="false">
+      <div class="vh">Reconciliation variance · ledger vs. source-derived expectation</div>
+      <p class="vt">Value isn't created or lost. It's reallocated between two accounts by offsetting amounts, and that signature is exactly what points triage at a wrong-account posting leg.</p>
+      <div class="vbar-row">
+        <span class="vlabel">Cash</span>
+        <span class="vbar-track"><span class="vbar pos"></span></span>
+        <span class="vamt pos">+$4,394.83</span>
+      </div>
+      <div class="vbar-row">
+        <span class="vlabel">Interest Income</span>
+        <span class="vbar-track"><span class="vbar neg"></span></span>
+        <span class="vamt neg">−$4,394.83</span>
+      </div>
+      <div class="vnet">Net variance <b>+$0.00</b>, so the trial balance never flinches. Only the substantive reconciliation does.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ E · TRIAGE ============ -->
+<section class="section">
+  <div class="wrap">
+    <div class="wp-head">
+      <span class="wp-ref">W/P&nbsp;E</span>
+      <div>
+        <p class="wp-kicker">From detection to triage</p>
+        <h2 class="wp-title">The evidence pack explains the exception</h2>
+      </div>
+    </div>
+    <p class="body-narrow" style="margin-bottom:24px">Catching the break is v1. Explaining it is v2. A deterministic triage step groups the variances, works out the root cause, points at the responsible posting rule, and writes it up in plain English, with <strong>no LLM involved</strong>. The <code>pack</code> command embeds this in a checksummed, tamper-evident evidence pack, and CI asserts the classification.</p>
+
+    <div class="triage">
+      <span class="badge">▣ Deterministic triage · classification: wrong_account · high confidence</span>
+      <h4>cash + interest_income: value reallocated, not lost</h4>
+      <p>Accounts <code>cash</code> and <code>interest_income</code> diverge from their source-derived expectations by offsetting amounts (net +0.00 ≈ 0: cash +4,394.83, interest_income −4,394.83), indicating value was reallocated between them rather than created or lost. That points to a posting leg targeting the wrong account.</p>
+      <p>Both accounts are posted by the <code>payment</code> entry; the leg crediting <code>interest_income</code> (rule <code>payment/3</code>, amount_source <code>interest</code>) is the leading suspect for misrouting.</p>
+      <div class="nx"><b>Next step:</b> inspect the candidate posting rules for a leg posting to the wrong account, correct it, and re-run reconciliation. An optional local Ollama backend rewrites this prose more fully, and it never changes the deterministic root cause.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ F · CAPABILITY MAP ============ -->
+<section class="section">
+  <div class="wrap">
+    <div class="wp-head">
+      <span class="wp-ref">W/P&nbsp;F</span>
+      <div>
+        <p class="wp-kicker">Capability map</p>
+        <h2 class="wp-title">One project, the whole job</h2>
+      </div>
+    </div>
+    <div class="caps">
+      <div class="cap"><div class="req">Production dbt: models, tests, macros, docs</div><div class="loc">models/ · tests/ · macros/post_entry.sql</div></div>
+      <div class="cap"><div class="req">dbt unit tests</div><div class="loc">unit_tests/int_postings_unit_tests.yml</div></div>
+      <div class="cap"><div class="req">Dimensional modeling</div><div class="loc">models/marts/ · facts + conformed dims</div></div>
+      <div class="cap"><div class="req">SQL + correctness-critical logic</div><div class="loc">int_postings.sql · fct_balance_rollforward.sql</div></div>
+      <div class="cap"><div class="req">Python for financial data</div><div class="loc">audit_cli/ (Typer + Pydantic) · seed_events.py</div></div>
+      <div class="cap"><div class="req">CI / CD</div><div class="loc">.github/workflows/ci.yml · build, control-proof, cli</div></div>
+      <div class="cap"><div class="req">SOX controls / audit evidence</div><div class="loc">tests/assert_*.sql · audit_cli/ evidence packs</div></div>
+      <div class="cap"><div class="req">Snowflake: RBAC, masking, clustering</div><div class="loc">snowflake/ · profiles.yml snowflake target</div></div>
+      <div class="cap"><div class="req">Semantic layer</div><div class="loc">models/semantic/ (MetricFlow)</div></div>
+      <div class="cap"><div class="req">AI / LLM for data quality</div><div class="loc">audit_cli/triage/ · heuristic + optional local Ollama</div></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="colophon">
+        <div class="who">James Bruning</div>
+        Data &amp; analytics engineering · financial controls in code<br>
+        <a href="mailto:jimtbruning@gmail.com">jimtbruning@gmail.com</a>
+      </div>
+      <div class="runs">$ git clone &amp;&amp; dbt build · no warehouse, no credentials, no network</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---- animated stat counters ---- */
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function fmt(n, comma, prefix){
+    var s = comma ? n.toLocaleString('en-US') : String(n);
+    return (prefix||'') + s;
+  }
+  function runCount(el){
+    var to = parseInt(el.getAttribute('data-to'),10);
+    var comma = el.getAttribute('data-comma');
+    var prefix = el.getAttribute('data-prefix') || '';
+    if(reduce || to === 0){ el.textContent = fmt(to, comma, prefix); return; }
+    var start = null, dur = 1100;
+    function step(ts){
+      if(!start) start = ts;
+      var p = Math.min((ts-start)/dur, 1);
+      var eased = 1 - Math.pow(1-p, 3);
+      el.textContent = fmt(Math.round(to*eased), comma, prefix);
+      if(p<1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  var statsWrap = document.getElementById('stats');
+  if(statsWrap && 'IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          statsWrap.querySelectorAll('[data-to]').forEach(runCount);
+          io.disconnect();
+        }
+      });
+    },{threshold:.4});
+    io.observe(statsWrap);
+  } else if(statsWrap){
+    statsWrap.querySelectorAll('[data-to]').forEach(runCount);
+  }
+
+  /* ---- interactive control panel ---- */
+  var panel = document.getElementById('panel');
+  var inj = document.getElementById('injbug');
+  var target = document.getElementById('target');
+  var footmsg = document.getElementById('footmsg');
+
+  var CLEAN = {
+    balanced:{cls:'pass',txt:'PASS',detail:"Every entry's debits equal its credits."},
+    trial:{cls:'pass',txt:'PASS',detail:"Total debits equal total credits across the ledger."},
+    recon:{cls:'pass',txt:'PASS',detail:"Ledger balances match balances re-derived from source events."}
+  };
+  var BROKEN = {
+    balanced:{cls:'pass',txt:'PASS',detail:"Still balanced. The reallocation kept debits = credits."},
+    trial:{cls:'pass',txt:'PASS',detail:"Still ties out: wrong account, right total. Blind to this break."},
+    recon:{cls:'fail',txt:'FAIL 2',detail:"cash, interest_income off by ±4,394.83 vs. source. Break caught."}
+  };
+
+  function applyState(broken){
+    var data = broken ? BROKEN : CLEAN;
+    panel.classList.toggle('broken', broken);
+    target.textContent = broken ? 'cash' : 'interest_income';
+    target.style.color = broken ? 'var(--red)' : '';
+    Object.keys(data).forEach(function(key){
+      var card = panel.querySelector('[data-ctrl="'+key+'"]');
+      var st = data[key];
+      var verdict = card.querySelector('.verdict');
+      var dot = card.querySelector('.dot');
+      verdict.className = 'verdict ' + st.cls;
+      dot.className = 'dot ' + (st.cls === 'fail' ? 'r' : 'g');
+      card.querySelector('.vtext').textContent = st.txt;
+      card.querySelector('.detail').textContent = st.detail;
+      card.classList.toggle('is-fail', st.cls === 'fail');
+    });
+    footmsg.textContent = broken ? 'FAIL · variance +4,394.83 / −4,394.83 named' : 'PASS';
+    footmsg.style.color = broken ? 'var(--red)' : 'var(--green-deep)';
+  }
+  if(inj){
+    inj.addEventListener('change', function(){ applyState(inj.checked); });
+    applyState(false);
+  }
+})();
+</script>
+</body>
+</html>

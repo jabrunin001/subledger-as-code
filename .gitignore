@@ -8,3 +8,6 @@ evidence/
 __pycache__/
 .pytest_cache/
 .user.yml
+
+# local preview tooling
+.claude/
