@@ -118,7 +118,3 @@ With Ollama running, `--backend ollama` writes a fuller natural-language explana
 ## Running on Snowflake
 
 DuckDB is the default target, so the repo clones and runs for free. To run on Snowflake, set the `SNOWFLAKE_*` env vars (see `profiles.yml`) and run `dbt build --profiles-dir . --target snowflake`. Apply `snowflake/rbac.sql`, `snowflake/masking_policies.sql`, and `snowflake/clustering.sql` first. Clustering `fct_journal_lines` by `(month, account_id)` prunes micro-partitions on the period-and-account reconciliation queries, and an XS warehouse is plenty for this data volume.
-
-## Roadmap
-
-- Spec 3 (optional): a Snowflake deep-dive with a live trial account and a query-profile teardown.
